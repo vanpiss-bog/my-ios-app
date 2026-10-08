@@ -6,12 +6,75 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: my-ios-app
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Create project.yml
+        run: |
+          cat > project.yml <<'EOF'
+          name: MyApp
+          options:
+            bundleIdPrefix: com.example
+            deploymentTarget:
+              iOS: "14.0"
+          targets:
+            MyApp:
+              type: application
+              platform: iOS
+              sources:
+                - Sources/MyApp
+              info:
+                path: Info.plist
+                properties:
+                  CFBundleDisplayName: MyApp
+                  UILaunchScreen: {}
+          EOF
+
+      - name: Create Info.plist
+        run: |
+          cat > Info.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>en</string>
+              <key>CFBundleExecutable</key>
+              <string>$(EXECUTABLE_NAME)</string>
+              <key>CFBundleIdentifier</key>
+              <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+              <key>CFBundleName</key>
+              <string>$(PRODUCT_NAME)</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>UILaunchScreen</key>
+              <dict/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
       - name: Build
         run: |
-          xcodebuild -scheme MyApp -destination 'generic/platform=iOS' -archivePath build/MyApp.xcarchive archive CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
+          xcodebuild -project MyApp.xcodeproj \
+            -scheme MyApp \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath build/MyApp.xcarchive \
+            archive \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY=""
 
       - name: Create IPA
         run: |
@@ -23,4 +86,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MyApp-ipa
-          path: MyApp.ipa
+          path: my-ios-app/MyApp.ipa
