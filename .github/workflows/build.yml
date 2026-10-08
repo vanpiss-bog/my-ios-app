@@ -1,0 +1,26 @@
+name: Build iOS App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          xcodebuild -scheme MyApp -destination 'generic/platform=iOS' -archivePath build/MyApp.xcarchive archive CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Create IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/MyApp.xcarchive/Products/Applications/MyApp.app Payload/
+          zip -r MyApp.ipa Payload/
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyApp-ipa
+          path: MyApp.ipa
